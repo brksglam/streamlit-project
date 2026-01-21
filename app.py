@@ -806,21 +806,41 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button(T['cta'], key=f"cta_{prop['id']}", use_container_width=True):
-            with st.form(key=f"form_{prop['id']}"):
-                st.write(f"**{prop['name']}**")
-                name = st.text_input(T['form_name'])
-                phone = st.text_input(T['form_phone'])
-                submitted = st.form_submit_button(T['form_submit'])
-                if submitted and name and phone:
-                    success, mode = save_lead(name, phone, prop['name'])
-                    if success:
-                        if mode == 'online':
-                            st.success(f"{T['form_ok']} (Online)")
+        # Unique key for state management
+        prop_id = prop['id']
+        
+        # Initialize state for this property if not exists
+        if f"show_form_{prop_id}" not in st.session_state:
+            st.session_state[f"show_form_{prop_id}"] = False
+
+        # Toggle button
+        if st.button(T['cta'], key=f"cta_{prop_id}", use_container_width=True):
+            st.session_state[f"show_form_{prop_id}"] = not st.session_state[f"show_form_{prop_id}"]
+            
+        # Show form if active
+        if st.session_state[f"show_form_{prop_id}"]:
+            with st.container(border=True):
+                with st.form(key=f"form_{prop_id}"):
+                    st.write(f"**{prop['name']} - {T['cta']}**")
+                    name = st.text_input(T['form_name'])
+                    phone = st.text_input(T['form_phone'])
+                    note = st.text_area("Not (Opsiyonel)")
+                    submitted = st.form_submit_button(T['form_submit'])
+                    
+                    if submitted:
+                        if name and phone:
+                            success, mode = save_lead(name, phone, f"{prop['name']} - {note}")
+                            if success:
+                                if mode == 'online':
+                                    st.success(f"✅ {T['form_ok']} (Online)")
+                                else:
+                                    st.warning(f"⚠️ {T['form_ok']} (Çevrimdışı/Offline kaydedildi)")
+                                # Close form after success
+                                st.session_state[f"show_form_{prop_id}"] = False
+                            else:
+                                st.error("❌ Kayıt başarısız!")
                         else:
-                            st.warning(f"{T['form_ok']} (Çevrimdışı/Offline Kaydedildi)")
-                    else:
-                        st.error("Kaydedilemedi!")
+                            st.warning("⚠️ İsim ve Telefon zorunludur.")
     
     # === AUTHORITY SECTION ===
     st.markdown(f"""
