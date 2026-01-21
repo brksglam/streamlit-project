@@ -481,62 +481,103 @@ import certifi
 
 MONGO_URI = "mongodb+srv://buraksaglam415_db_user:jnIC2z40mFDD8rqh@cluster0.swtf7ev.mongodb.net/?appName=Cluster0"
 
+# ============================================================
+# DATABASE MANAGER (MONGODB + LOCAL FALLBACK)
+# ============================================================
+import json
+import os
+
+# Global variable to track connection status
+if 'db_status' not in st.session_state:
+    st.session_state.db_status = "unknown"
+
 @st.cache_resource
-def get_db():
-    """Get MongoDB connection with sophisticated fallback and retry logic"""
-    # 1. Strategy: Standard Secure with Certifi
+def get_db_client():
+    """
+    Attempts to connect to MongoDB with multiple strategies.
+    Returns (client, db, 'online') if successful.
+    Returns (None, None, 'offline') if failed.
+    """
+    # Strategy 1: Standard Secure
     try:
-        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
+        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=3000)
         client.admin.command('ping')
-        return client["agd_investment"]
-    except Exception as e_secure:
-        pass # Fall through to backup strategy
+        return client, client["agd_investment"], 'online'
+    except:
+        pass
 
-    # 2. Strategy: Nuclear Fallback (Ignore SSL Errors)
-    # This is often necessary on corporate networks or specific Windows environments
+    # Strategy 2: Aggressive Fallback (No Verify)
     try:
-        client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
+        client = MongoClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=3000)
         client.admin.command('ping')
-        # Log this for the developer, but show success to the user
-        print("Connected using fallback SSL strategy.")
-        return client["agd_investment"]
-    except Exception as e_fallback:
-        st.error(f"Kritik Bağlantı Hatası: Güvenli ve yedek bağlantı yöntemleri başarısız oldu.\nDetay: {str(e_fallback)}")
-        return None
+        return client, client["agd_investment"], 'online'
+    except:
+        pass
+    
+    # Strategy 3: Offline Mode
+    return None, None, 'offline'
 
-# ============================================================
-# HELPERS
-# ============================================================
 def save_lead(name, phone, note):
-    """Save lead to MongoDB"""
-    try:
-        db = get_db()
-        if db is not None:
+    """Save lead to MongoDB or Local CSV if offline"""
+    client, db, status = get_db_client()
+    st.session_state.db_status = status
+    
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+    
+    if status == 'online' and db is not None:
+        try:
             db.leads.insert_one({
                 "name": name,
                 "phone": phone,
                 "note": note,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "timestamp": timestamp,
                 "status": "new"
             })
-            return True
-        else:
-            st.error("Veritabanı bağlantısı yok.")
-            return False
+            return True, "online"
+        except:
+            # If write fails online, fall back to offline write immediately
+            pass
+
+    # OFFLINE FALLBACK: Save to local CSV
+    try:
+        file_exists = os.path.isfile("local_leads.csv")
+        with open("local_leads.csv", "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["name", "phone", "note", "timestamp", "status"])
+            writer.writerow([name, phone, note, timestamp, "new_offline"])
+        return True, "offline"
     except Exception as e:
-        st.error(f"Kaydetme Hatası: {str(e)}")
-        return False
+        st.error(f"Kayıt hatası: {e}")
+        return False, "error"
 
 def get_all_leads():
-    """Get all leads from MongoDB"""
-    try:
-        db = get_db()
-        if db is not None:
-            return list(db.leads.find().sort("_id", -1))
-        return []
-    except Exception as e:
-        st.error(f"Veri çekme hatası: {str(e)}")
-        return []
+    """Get leads from MongoDB AND Local CSV"""
+    all_leads = []
+    
+    # 1. Fetch Online Leads
+    client, db, status = get_db_client()
+    if status == 'online' and db is not None:
+        try:
+            online_leads = list(db.leads.find().sort("_id", -1))
+            all_leads.extend(online_leads)
+        except:
+            pass
+            
+    # 2. Fetch Offline Leads
+    if os.path.isfile("local_leads.csv"):
+        try:
+            with open("local_leads.csv", "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                offline_leads = list(reader)
+                # Mark them visually
+                for lead in offline_leads:
+                    lead['source'] = 'OFFLINE (Yerel)'
+                all_leads.extend(offline_leads)
+        except:
+            pass
+            
+    return all_leads
 
 # ============================================================
 # ADMIN PANEL
@@ -733,10 +774,14 @@ def main():
                 phone = st.text_input(T['form_phone'])
                 submitted = st.form_submit_button(T['form_submit'])
                 if submitted and name and phone:
-                    if save_lead(name, phone, prop['name']):
-                        st.success(T['form_ok'])
+                    success, mode = save_lead(name, phone, prop['name'])
+                    if success:
+                        if mode == 'online':
+                            st.success(f"{T['form_ok']} (Online)")
+                        else:
+                            st.warning(f"{T['form_ok']} (Çevrimdışı/Offline Kaydedildi)")
                     else:
-                        st.error("Kaydedilemedi! Lütfen bağlantınızı kontrol edin.")
+                        st.error("Kaydedilemedi!")
     
     # === AUTHORITY SECTION ===
     st.markdown(f"""
