@@ -485,9 +485,12 @@ def get_db():
     """Get MongoDB connection (cached)"""
     try:
         client = MongoClient(MONGO_URI)
+        # Force a connection check
+        client.admin.command('ping')
         db = client["agd_investment"]
         return db
-    except:
+    except Exception as e:
+        st.error(f"MongoDB Connection Error: {str(e)}")
         return None
 
 # ============================================================
@@ -497,7 +500,7 @@ def save_lead(name, phone, note):
     """Save lead to MongoDB"""
     try:
         db = get_db()
-        if db:
+        if db is not None:
             db.leads.insert_one({
                 "name": name,
                 "phone": phone,
@@ -505,18 +508,23 @@ def save_lead(name, phone, note):
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "status": "new"
             })
-        return True
-    except:
+            return True
+        else:
+            st.error("Veritabanı bağlantısı yok.")
+            return False
+    except Exception as e:
+        st.error(f"Kaydetme Hatası: {str(e)}")
         return False
 
 def get_all_leads():
     """Get all leads from MongoDB"""
     try:
         db = get_db()
-        if db:
+        if db is not None:
             return list(db.leads.find().sort("_id", -1))
         return []
-    except:
+    except Exception as e:
+        st.error(f"Veri çekme hatası: {str(e)}")
         return []
 
 # ============================================================
@@ -691,8 +699,10 @@ def main():
                 phone = st.text_input(T['form_phone'])
                 submitted = st.form_submit_button(T['form_submit'])
                 if submitted and name and phone:
-                    save_lead(name, phone, prop['name'])
-                    st.success(T['form_ok'])
+                    if save_lead(name, phone, prop['name']):
+                        st.success(T['form_ok'])
+                    else:
+                        st.error("Kaydedilemedi! Lütfen bağlantınızı kontrol edin.")
     
     # === AUTHORITY SECTION ===
     st.markdown(f"""
