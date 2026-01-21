@@ -635,6 +635,45 @@ def admin_panel():
         if st.button("Çıkış Yap"):
             st.session_state.admin_auth = False
             st.rerun()
+
+        # === DIAGNOSTIC SECTION ===
+        with st.expander("🛠️ Bağlantı Tanı / Debugging", expanded=True):
+            if st.button("Bağlantıyı Şimdi Test Et"):
+                st.write("Test başlatılıyor...")
+                # 1. Check Libraries
+                try:
+                    import certifi
+                    st.success(f"Certifi Yüklü: {certifi.where()}")
+                except ImportError:
+                    st.error("Certifi Modülü YOK!")
+                
+                # 2. Check Connection Strategies
+                st.write("--- Strateji 1: Güvenli Bağlantı (Certifi) ---")
+                try:
+                    c1 = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=2000)
+                    c1.admin.command('ping')
+                    st.success("✅ BAŞARILI: Güvenli bağlantı kuruldu.")
+                except Exception as e:
+                    st.error(f"❌ BAŞARISIZ: {e}")
+                
+                st.write("--- Strateji 2: Güvenli Olmayan (Fallback) ---")
+                try:
+                    c2 = MongoClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=2000)
+                    c2.admin.command('ping')
+                    st.success("✅ BAŞARILI: Yedek bağlantı kuruldu.")
+                except Exception as e:
+                    st.error(f"❌ BAŞARISIZ: {e}")
+                
+                # 3. Check CSV
+                st.write("--- Yerel Kayıt Durumu ---")
+                import os
+                if os.path.isfile("local_leads.csv"):
+                    st.success("✅ local_leads.csv dosyası mevcut.")
+                    with open("local_leads.csv", "r", encoding="utf-8") as f:
+                        st.code(f.read())
+                else:
+                    st.warning("⚠️ local_leads.csv henüz oluşturulmamış.")
+                    
     else:
         # Login form
         password = st.text_input("Şifre", type="password")
