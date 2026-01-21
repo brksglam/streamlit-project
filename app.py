@@ -477,6 +477,7 @@ PROPERTIES = [
 # MONGODB CONNECTION
 # ============================================================
 from pymongo import MongoClient
+import certifi
 
 MONGO_URI = "mongodb+srv://buraksaglam415_db_user:jnIC2z40mFDD8rqh@cluster0.swtf7ev.mongodb.net/?appName=Cluster0"
 
@@ -484,7 +485,7 @@ MONGO_URI = "mongodb+srv://buraksaglam415_db_user:jnIC2z40mFDD8rqh@cluster0.swtf
 def get_db():
     """Get MongoDB connection (cached)"""
     try:
-        client = MongoClient(MONGO_URI)
+        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
         # Force a connection check
         client.admin.command('ping')
         db = client["agd_investment"]
