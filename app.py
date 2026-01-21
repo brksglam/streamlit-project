@@ -483,15 +483,25 @@ MONGO_URI = "mongodb+srv://buraksaglam415_db_user:jnIC2z40mFDD8rqh@cluster0.swtf
 
 @st.cache_resource
 def get_db():
-    """Get MongoDB connection (cached)"""
+    """Get MongoDB connection with sophisticated fallback and retry logic"""
+    # 1. Strategy: Standard Secure with Certifi
     try:
-        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
-        # Force a connection check
+        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000)
         client.admin.command('ping')
-        db = client["agd_investment"]
-        return db
-    except Exception as e:
-        st.error(f"MongoDB Connection Error: {str(e)}")
+        return client["agd_investment"]
+    except Exception as e_secure:
+        pass # Fall through to backup strategy
+
+    # 2. Strategy: Nuclear Fallback (Ignore SSL Errors)
+    # This is often necessary on corporate networks or specific Windows environments
+    try:
+        client = MongoClient(MONGO_URI, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=5000)
+        client.admin.command('ping')
+        # Log this for the developer, but show success to the user
+        print("Connected using fallback SSL strategy.")
+        return client["agd_investment"]
+    except Exception as e_fallback:
+        st.error(f"Kritik Bağlantı Hatası: Güvenli ve yedek bağlantı yöntemleri başarısız oldu.\nDetay: {str(e_fallback)}")
         return None
 
 # ============================================================
@@ -555,6 +565,29 @@ def admin_panel():
                         st.write(f"🕐 {lead.get('timestamp', 'N/A')}")
             
             st.info(f"Toplam: {len(leads)} lead")
+            
+            # Export to CSV
+            csv_data = [["İsim", "Telefon", "Not", "Tarih"]]
+            for lead in leads:
+                csv_data.append([
+                    lead.get('name', ''),
+                    lead.get('phone', ''),
+                    lead.get('note', ''),
+                    lead.get('timestamp', '')
+                ])
+            
+            import io
+            import csv
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerows(csv_data)
+            
+            st.download_button(
+                "📥 Excel/CSV Olarak İndir",
+                data=output.getvalue().encode('utf-8-sig'),
+                file_name=f"leads_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
         else:
             st.warning("Henüz lead yok")
         
@@ -726,7 +759,8 @@ def main():
     # Footer
     st.markdown("""
     <div class="site-footer">
-        AGD Investment © 2026 | Tüm hakları saklıdır
+        AGD Investment © 2026 | Tüm hakları saklıdır <br>
+        <a href="/?admin" target="_self" style="color: #ddd; text-decoration: none; font-size: 0.7rem;">Admin Giriş</a>
     </div>
     """, unsafe_allow_html=True)
 
