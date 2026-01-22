@@ -464,6 +464,14 @@ LANG = {
         "badge_gem": "💎 Fırsat Ürünü",
         "badge_star": "⭐ Nadir Lokasyon",
         "yield_lbl": "Yıllık Getiri",
+        "tr_title": "Türkiye Çözüm Ortaklığı",
+        "tr_sub": "Konut ve Arsa yatırımları için profesyonel işlem merkezi",
+        "tr_card_sell": "Mülkümü Satmak İstiyorum",
+        "tr_desc_sell": "Ücretsiz değerleme ve hızlı satış",
+        "tr_card_buy": "Mülk Almak İstiyorum",
+        "tr_desc_buy": "Bütçenize uygun portföy sunumu",
+        "tr_modal_sell": "Satış Talebi Oluştur (TR)",
+        "tr_modal_buy": "Alış Talebi Oluştur (TR)",
     },
     "EN": {
         "brand": "AGD | INVESTMENT ENGINEERING",
@@ -494,6 +502,14 @@ LANG = {
         "badge_gem": "💎 Opportunity",
         "badge_star": "⭐ Rare Location",
         "yield_lbl": "Annual Yield",
+        "tr_title": "Turkey Real Estate Services",
+        "tr_sub": "Professional support for Housing & Land",
+        "tr_card_sell": "I Want to Sell",
+        "tr_desc_sell": "Free appraisal & fast process",
+        "tr_card_buy": "I Want to Buy",
+        "tr_desc_buy": "Opportunities for your budget",
+        "tr_modal_sell": "Sell Request (Turkey)",
+        "tr_modal_buy": "Buy Request (Turkey)",
     },
     "AR": {
         "brand": "AGD | هندسة الاستثمار",
@@ -513,7 +529,6 @@ LANG = {
         "btn_wa": "واتساب",
         "btn_li": "لينكدإن",
         "btn_map": "المكتب",
-        "form_name": "الاسم",
         "form_phone": "الهاتف",
         "form_email": "البريد الإلكتروني",
         "form_submit": "إرسال",
@@ -524,6 +539,14 @@ LANG = {
         "badge_gem": "💎 فرصة",
         "badge_star": "⭐ موقع نادر",
         "yield_lbl": "العائد السنوي",
+        "tr_title": "خدمات العقارات في تركيا",
+        "tr_sub": "دعم احترافي لشراء/بيع المساكن والأراضي",
+        "tr_card_sell": "أريد بيع عقاري",
+        "tr_desc_sell": "تقييم مجاني وعملية سريعة",
+        "tr_card_buy": "أريد شراء عقار",
+        "tr_desc_buy": "فرص مناسبة لميزانيتك",
+        "tr_modal_sell": "طلب بيع عقار (تركيا)",
+        "tr_modal_buy": "طلب شراء عقار (تركيا)",
     }
 }
 
@@ -562,7 +585,7 @@ import os
 if 'db_status' not in st.session_state:
     st.session_state.db_status = "unknown"
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def get_db_client():
     """
     Attempts to connect to MongoDB with multiple strategies.
@@ -957,6 +980,99 @@ def main():
                                 st.session_state[f"show_form_{prop_id}"] = False
                             else:
                                 st.error("❌ Bir bağlantı hatası oluştu, ancak not alındı.")
+    
+    # === TURKEY SERVICES SECTION (NEW) ===
+    st.markdown(f"""
+    <div style="margin-top: 4rem; margin-bottom: 2rem;">
+        <h2 class="section-title">{T['tr_title']}</h2>
+        <p class="section-desc">{T['tr_sub']}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_tr1, col_tr2 = st.columns(2)
+
+    # --- SELL CARD ---
+    with col_tr1:
+        st.markdown(f"""
+        <div style="background:#f8fafc; padding:2rem; border-radius:12px; border:1px solid #e2e8f0; text-align:center; height:100%;">
+            <div style="font-size:2.5rem; margin-bottom:1rem;">🏘️</div>
+            <h3 style="font-size:1.2rem; font-weight:700; color:#0f172a; margin-bottom:0.5rem;">{T['tr_card_sell']}</h3>
+            <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">{T['tr_desc_sell']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button(f"➡️ {T['tr_card_sell']}", key="btn_tr_sell", use_container_width=True):
+            st.session_state.show_tr_sell = not st.session_state.get('show_tr_sell', False)
+            st.session_state.show_tr_buy = False # Close other
+
+    # --- BUY CARD ---
+    with col_tr2:
+        st.markdown(f"""
+        <div style="background:#f8fafc; padding:2rem; border-radius:12px; border:1px solid #e2e8f0; text-align:center; height:100%;">
+            <div style="font-size:2.5rem; margin-bottom:1rem;">🔑</div>
+            <h3 style="font-size:1.2rem; font-weight:700; color:#0f172a; margin-bottom:0.5rem;">{T['tr_card_buy']}</h3>
+            <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">{T['tr_desc_buy']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button(f"➡️ {T['tr_card_buy']}", key="btn_tr_buy", use_container_width=True):
+            st.session_state.show_tr_buy = not st.session_state.get('show_tr_buy', False)
+            st.session_state.show_tr_sell = False # Close other
+
+    # --- DYNAMIC FORMS FOR TURKEY ---
+    
+    # 1. SELL FORM
+    if st.session_state.get('show_tr_sell', False):
+        st.markdown(f"<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            with st.form(key="form_tr_sell"):
+                st.write(f"**{T['tr_modal_sell']}**")
+                name = st.text_input(T['form_name'], key="tr_s_name")
+                phone = st.text_input(T['form_phone'], key="tr_s_phone")
+                email = st.text_input(T['form_email'], key="tr_s_email")
+                note = st.text_area("Şehir / Mülk Tipi / Beklenti (Opsiyonel)", key="tr_s_note")
+                submitted = st.form_submit_button(T['form_submit'])
+                
+                if submitted:
+                    if not name:
+                        st.warning("⚠️ İsim zorunludur.")
+                    elif not phone and not email:
+                        st.warning(f"⚠️ {T['form_warning']}")
+                    elif phone and len(phone) > 20: 
+                        st.warning(f"⚠️ {T['form_phone_err']}")
+                    else:
+                        success, _ = save_lead(name, phone, email, f"TR-SATIŞ: {note}")
+                        if success:
+                            st.success(f"✅ {T['form_ok']}")
+                            st.session_state.show_tr_sell = False
+                        else:
+                            st.error("❌ Hata.")
+
+    # 2. BUY FORM
+    if st.session_state.get('show_tr_buy', False):
+        st.markdown(f"<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+        with st.container(border=True):
+            with st.form(key="form_tr_buy"):
+                st.write(f"**{T['tr_modal_buy']}**")
+                name = st.text_input(T['form_name'], key="tr_b_name")
+                phone = st.text_input(T['form_phone'], key="tr_b_phone")
+                email = st.text_input(T['form_email'], key="tr_b_email")
+                note = st.text_area("Hangi Şehir? / Bütçe / Arsa-Konut?", key="tr_b_note")
+                submitted = st.form_submit_button(T['form_submit'])
+                
+                if submitted:
+                    if not name:
+                        st.warning("⚠️ İsim zorunludur.")
+                    elif not phone and not email:
+                        st.warning(f"⚠️ {T['form_warning']}")
+                    elif phone and len(phone) > 20: 
+                        st.warning(f"⚠️ {T['form_phone_err']}")
+                    else:
+                        success, _ = save_lead(name, phone, email, f"TR-ALIŞ: {note}")
+                        if success:
+                            st.success(f"✅ {T['form_ok']}")
+                            st.session_state.show_tr_buy = False
+                        else:
+                            st.error("❌ Hata.")
+
     
     # === AUTHORITY SECTION ===
     st.markdown(f"""
