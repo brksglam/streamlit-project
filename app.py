@@ -872,18 +872,13 @@ def main():
                     
                     if submitted:
                         if name and phone:
-                            success, mode = save_lead(name, phone, f"{prop['name']} - {note}")
+                            success, _ = save_lead(name, phone, f"{prop['name']} - {note}")
                             if success:
-                                if mode == 'online':
-                                    st.success(f"✅ {T['form_ok']} (Online)")
-                                else:
-                                    st.warning(f"⚠️ {T['form_ok']} (Çevrimdışı/Offline kaydedildi)")
+                                st.success(f"✅ {T['form_ok']}")
                                 # Close form after success
                                 st.session_state[f"show_form_{prop_id}"] = False
                             else:
-                                st.error("❌ Kayıt başarısız!")
-                        else:
-                            st.warning("⚠️ İsim ve Telefon zorunludur.")
+                                st.error("❌ Bir bağlantı hatası oluştu, ancak not alındı.")
     
     # === AUTHORITY SECTION ===
     st.markdown(f"""
