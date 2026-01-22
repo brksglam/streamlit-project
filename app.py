@@ -455,8 +455,11 @@ LANG = {
         "btn_map": "Ofis Konumu",
         "form_name": "Ad Soyad",
         "form_phone": "Telefon",
+        "form_email": "E-Posta (Tercihen)",
         "form_submit": "Gönder",
         "form_ok": "Talebiniz alındı.",
+        "form_warning": "Lütfen en az bir iletişim bilgisi (Telefon veya E-Posta) giriniz.",
+        "form_phone_err": "Telefon numarası çok uzun. Lütfen kontrol ediniz.",
         "badge_fire": "🔥 Çok Talep Görüyor",
         "badge_gem": "💎 Fırsat Ürünü",
         "badge_star": "⭐ Nadir Lokasyon",
@@ -482,8 +485,11 @@ LANG = {
         "btn_map": "Office",
         "form_name": "Full Name",
         "form_phone": "Phone",
+        "form_email": "E-Mail (Optional)",
         "form_submit": "Submit",
         "form_ok": "Request received.",
+        "form_warning": "Please provide at least one contact method (Phone or Email).",
+        "form_phone_err": "Phone number is too long.",
         "badge_fire": "🔥 High Demand",
         "badge_gem": "💎 Opportunity",
         "badge_star": "⭐ Rare Location",
@@ -509,8 +515,11 @@ LANG = {
         "btn_map": "المكتب",
         "form_name": "الاسم",
         "form_phone": "الهاتف",
+        "form_email": "البريد الإلكتروني",
         "form_submit": "إرسال",
         "form_ok": "تم استلام الطلب.",
+        "form_warning": "يرجى تقديم وسيلة اتصال واحدة على الأقل.",
+        "form_phone_err": "رقم الهاتف طويل جدا.",
         "badge_fire": "🔥 طلب عالي",
         "badge_gem": "💎 فرصة",
         "badge_star": "⭐ موقع نادر",
@@ -595,7 +604,7 @@ def get_db_client():
     # Strategy 3: Offline Mode
     return None, None, 'offline'
 
-def save_lead(name, phone, note):
+def save_lead(name, phone, email, note):
     """
     Save lead with GUARANTEED persistence.
     1. Try Online DB.
@@ -613,6 +622,7 @@ def save_lead(name, phone, note):
             db.leads.insert_one({
                 "name": name,
                 "phone": phone,
+                "email": email,
                 "note": note,
                 "timestamp": timestamp,
                 "status": "new"
@@ -630,11 +640,11 @@ def save_lead(name, phone, note):
         with open(file_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
-                # Add header if new file
-                writer.writerow(["name", "phone", "note", "timestamp", "status", "source"])
+                # Add header if new file (Updated with Email)
+                writer.writerow(["name", "phone", "email", "note", "timestamp", "status", "source"])
             
-            # Write data
-            writer.writerow([name, phone, note, timestamp, "new_offline", "CSV_BACKUP"])
+            # Write data (Updated with Email)
+            writer.writerow([name, phone, email, note, timestamp, "new_offline", "CSV_BACKUP"])
             
         return True, "offline"
     except Exception as e:
@@ -700,6 +710,8 @@ def admin_panel():
                     with col1:
                         st.write(f"**{lead.get('name', 'N/A')}**")
                         st.write(f"📞 {lead.get('phone', 'N/A')}")
+                        if lead.get('email'):
+                            st.write(f"📧 {lead.get('email', '')}")
                         st.write(f"📝 {lead.get('note', 'N/A')}")
                     with col2:
                         st.write(f"🕐 {lead.get('timestamp', 'N/A')}")
@@ -707,11 +719,12 @@ def admin_panel():
             st.info(f"Toplam: {len(leads)} lead")
             
             # Export to CSV
-            csv_data = [["İsim", "Telefon", "Not", "Tarih"]]
+            csv_data = [["İsim", "Telefon", "Email", "Not", "Tarih"]]
             for lead in leads:
                 csv_data.append([
                     lead.get('name', ''),
                     lead.get('phone', ''),
+                    lead.get('email', ''),
                     lead.get('note', ''),
                     lead.get('timestamp', '')
                 ])
@@ -922,13 +935,22 @@ def main():
                 with st.form(key=f"form_{prop_id}"):
                     st.write(f"**{prop['name']} - {T['cta']}**")
                     name = st.text_input(T['form_name'])
-                    phone = st.text_input(T['form_phone'])
+                    phone = st.text_input(T['form_phone']) 
+                    email = st.text_input(T['form_email'])
                     note = st.text_area("Not (Opsiyonel)")
                     submitted = st.form_submit_button(T['form_submit'])
                     
                     if submitted:
-                        if name and phone:
-                            success, _ = save_lead(name, phone, f"{prop['name']} - {note}")
+                        # Validation Logic: Name + (Phone OR Email)
+                        if not name:
+                            st.warning("⚠️ İsim zorunludur.")
+                        elif not phone and not email:
+                            st.warning(f"⚠️ {T['form_warning']}")
+                        elif phone and len(phone) > 20: 
+                            # Max char limit check (Soft Limit)
+                            st.warning(f"⚠️ {T['form_phone_err']}")
+                        else:
+                            success, _ = save_lead(name, phone, email, f"{prop['name']} - {note}")
                             if success:
                                 st.success(f"✅ {T['form_ok']}")
                                 # Close form after success
