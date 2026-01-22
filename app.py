@@ -273,12 +273,26 @@ st.markdown("""
         margin-top: 1rem;
     }
     
-    /* === AUTHORITY SECTION === */
+    /* === AUTHORITY SECTION (PREMIUM) === */
     .authority-bar {
-        background: linear-gradient(135deg, #0E1117 0%, #1a1a2e 100%);
-        border-radius: 12px;
-        padding: 2.5rem;
-        margin-top: 3rem;
+        background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+        border: 1px solid #312e81;
+        border-radius: 16px;
+        padding: 3rem;
+        margin-top: 4rem;
+        box-shadow: 0 10px 40px -10px rgba(30, 27, 75, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Decorative background blur */
+    .authority-bar::before {
+        content: '';
+        position: absolute;
+        top: 0; right: 0;
+        width: 300px; height: 300px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0,0,0,0) 70%);
+        pointer-events: none;
     }
     
     .authority-inner {
@@ -286,53 +300,83 @@ st.markdown("""
         justify-content: space-between;
         align-items: center;
         flex-wrap: wrap;
-        gap: 1.5rem;
+        gap: 2rem;
+        position: relative;
+        z-index: 1;
     }
     
     .authority-info h3 {
-        color: white;
-        font-size: 1.4rem;
+        color: #ffffff;
+        font-size: 1.8rem;
         font-weight: 800;
-        margin: 0 0 6px 0;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.02em;
+        background: linear-gradient(to right, #fff, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
     
     .authority-info .title {
-        color: #94a3b8;
-        font-size: 1rem;
-        margin: 0 0 4px 0;
+        color: #818cf8; /* Soft Indigo */
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
     }
     
     .authority-info .loc {
-        color: #64748b;
-        font-size: 0.9rem;
+        color: #94a3b8;
+        font-size: 0.95rem;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
     }
     
     .authority-btns {
         display: flex;
-        gap: 12px;
+        gap: 16px;
         flex-wrap: wrap;
     }
     
+    /* Modern Glass Buttons */
     .auth-link {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 12px 20px;
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 8px;
-        color: white;
-        font-size: 0.9rem;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: #e2e8f0;
+        font-size: 0.95rem;
         font-weight: 600;
-        text-decoration: none;
-        transition: all 0.2s ease;
+        text-decoration: none !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(5px);
     }
     
     .auth-link:hover {
-        background: rgba(255,255,255,0.2);
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
         color: white;
-        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    /* Specific Button Styles */
+    .auth-link.whatsapp {
+        background: rgba(34, 197, 94, 0.1);
+        border-color: rgba(34, 197, 94, 0.2);
+        color: #4ade80;
+    }
+    .auth-link.whatsapp:hover {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: #4ade80;
+        color: #ffffff;
+        box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
     }
     
     /* === BUTTONS === */
@@ -368,9 +412,21 @@ st.markdown("""
     /* === FOOTER === */
     .site-footer {
         text-align: center;
-        padding: 2.5rem 0 1rem 0;
-        color: #aaa;
-        font-size: 0.8rem;
+        padding: 3rem 0;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        align-items: center;
+    }
+    
+    .footer-divider {
+        width: 60px;
+        height: 2px;
+        background: #e2e8f0;
+        margin: 0 auto;
+        border-radius: 2px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -887,12 +943,24 @@ def main():
             <div class="authority-info">
                 <h3>Burak Sağlam</h3>
                 <p class="title">{T['broker_title']}</p>
-                <p class="loc">Marmara Kule, Kartal / İstanbul</p>
+                <p class="loc">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Marmara Kule, Kartal / İstanbul
+                </p>
             </div>
             <div class="authority-btns">
-                <a href="https://wa.me/905064201248" class="auth-link" target="_blank">💬 {T['btn_wa']}</a>
-                <a href="https://linkedin.com" class="auth-link" target="_blank">🔗 {T['btn_li']}</a>
-                <a href="https://maps.google.com" class="auth-link" target="_blank">📍 {T['btn_map']}</a>
+                <a href="https://wa.me/905064201248" class="auth-link whatsapp" target="_blank">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0 1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0-1h1a.5.5 0 0 0 0-1h-1a5 5 0 0 0-5-5z"/></svg>
+                    {T['btn_wa']}
+                </a>
+                <a href="https://linkedin.com" class="auth-link" target="_blank">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+                    {T['btn_li']}
+                </a>
+                <a href="https://maps.google.com" class="auth-link" target="_blank">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                    {T['btn_map']}
+                </a>
             </div>
         </div>
     </div>
@@ -901,8 +969,14 @@ def main():
     # Footer
     st.markdown("""
     <div class="site-footer">
-        AGD Investment © 2026 | Tüm hakları saklıdır <br>
-        <a href="/?admin" target="_self" style="color: #ddd; text-decoration: none; font-size: 0.7rem;">Admin Giriş</a>
+        <div class="footer-divider"></div>
+        <div>
+            AGD Investment © 2026<br>
+            <span style="opacity: 0.6; font-size: 0.75rem;">Yatırım Mühendisliği & Varlık Yönetimi</span>
+        </div>
+        <a href="/?admin" target="_self" style="color: #cbd5e1; text-decoration: none; font-size: 0.7rem; opacity: 0.3; transition: opacity 0.2s;">
+            Admin
+        </a>
     </div>
     """, unsafe_allow_html=True)
 
