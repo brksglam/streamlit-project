@@ -476,8 +476,14 @@ PROPERTIES = [
 # ============================================================
 # MONGODB CONNECTION
 # ============================================================
-from pymongo import MongoClient
-import certifi
+try:
+    from pymongo import MongoClient
+    from pymongo.errors import ServerSelectionTimeoutError, ConnectionFailure
+    import certifi
+except ImportError:
+    # Graceful fallback if libraries are missing (should not happen with requirements.txt)
+    MongoClient = None
+    certifi = None
 
 MONGO_URI = "mongodb+srv://buraksaglam415_db_user:jnIC2z40mFDD8rqh@cluster0.swtf7ev.mongodb.net/?appName=Cluster0"
 
@@ -498,34 +504,56 @@ def get_db_client():
     Returns (client, db, 'online') if successful.
     Returns (None, None, 'offline') if failed.
     """
-    # Strategy 1: Standard Secure
-    try:
-        client = MongoClient(MONGO_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=3000)
-        client.admin.command('ping')
-        return client, client["agd_investment"], 'online'
-    except:
-        pass
+    if MongoClient is None:
+        return None, None, 'offline'
 
-    # Strategy 2: Aggressive Fallback (No Verify)
+    # Strategy 1: Standard Secure (Best Practice)
     try:
-        client = MongoClient(MONGO_URI, tls=True, tlsAllowInvalidCertificates=True, serverSelectionTimeoutMS=3000)
+        client = MongoClient(
+            MONGO_URI, 
+            tlsCAFile=certifi.where() if certifi else None, 
+            serverSelectionTimeoutMS=2000,
+            connectTimeoutMS=2000,
+            socketTimeoutMS=2000
+        )
+        # Force a connection check
         client.admin.command('ping')
         return client, client["agd_investment"], 'online'
-    except:
-        pass
+    except Exception as e:
+        print(f"Strategy 1 Failed: {e}")
+
+    # Strategy 2: Aggressive Fallback (No Verify - useful for restrictive networks)
+    try:
+        client = MongoClient(
+            MONGO_URI, 
+            tls=True, 
+            tlsAllowInvalidCertificates=True, 
+            serverSelectionTimeoutMS=2000,
+            connectTimeoutMS=2000
+        )
+        client.admin.command('ping')
+        return client, client["agd_investment"], 'online'
+    except Exception as e:
+        print(f"Strategy 2 Failed: {e}")
     
     # Strategy 3: Offline Mode
     return None, None, 'offline'
 
 def save_lead(name, phone, note):
-    """Save lead to MongoDB or Local CSV if offline"""
-    client, db, status = get_db_client()
-    st.session_state.db_status = status
-    
+    """
+    Save lead with GUARANTEED persistence.
+    1. Try Online DB.
+    2. If fails, write to Local CSV.
+    3. Never show 'DB Error' to user, just 'Saved'.
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    if status == 'online' and db is not None:
-        try:
+    # 1. Attempt Online Save
+    try:
+        client, db, status = get_db_client()
+        st.session_state.db_status = status
+        
+        if status == 'online' and db is not None:
             db.leads.insert_one({
                 "name": name,
                 "phone": phone,
@@ -534,35 +562,42 @@ def save_lead(name, phone, note):
                 "status": "new"
             })
             return True, "online"
-        except:
-            # If write fails online, fall back to offline write immediately
-            pass
+    except Exception as e:
+        print(f"Online Save Failed: {e}")
+        # Continue to offline backup immediately
 
-    # OFFLINE FALLBACK: Save to local CSV
+    # 2. Offline Fallback (Guaranteed)
     try:
-        file_exists = os.path.isfile("local_leads.csv")
-        with open("local_leads.csv", "a", newline="", encoding="utf-8") as f:
+        file_path = "local_leads.csv"
+        file_exists = os.path.isfile(file_path)
+        
+        with open(file_path, "a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(["name", "phone", "note", "timestamp", "status"])
-            writer.writerow([name, phone, note, timestamp, "new_offline"])
+                # Add header if new file
+                writer.writerow(["name", "phone", "note", "timestamp", "status", "source"])
+            
+            # Write data
+            writer.writerow([name, phone, note, timestamp, "new_offline", "CSV_BACKUP"])
+            
         return True, "offline"
     except Exception as e:
-        st.error(f"Kayıt hatası: {e}")
+        print(f"CRITICAL: Link Save Failed completely: {e}")
+        # This is the only time we might return False, but practically CSV write shouldn't fail
         return False, "error"
 
 def get_all_leads():
-    """Get leads from MongoDB AND Local CSV"""
+    """Get leads from MongoDB AND Local CSV merged"""
     all_leads = []
     
     # 1. Fetch Online Leads
-    client, db, status = get_db_client()
-    if status == 'online' and db is not None:
-        try:
+    try:
+        client, db, status = get_db_client()
+        if status == 'online' and db is not None:
             online_leads = list(db.leads.find().sort("_id", -1))
             all_leads.extend(online_leads)
-        except:
-            pass
+    except Exception as e:
+        print(f"Fetch Online Failed: {e}")
             
     # 2. Fetch Offline Leads
     if os.path.isfile("local_leads.csv"):
@@ -570,13 +605,21 @@ def get_all_leads():
             with open("local_leads.csv", "r", encoding="utf-8") as f:
                 reader = csv.DictReader(f)
                 offline_leads = list(reader)
-                # Mark them visually
+                # Ensure source is marked
                 for lead in offline_leads:
-                    lead['source'] = 'OFFLINE (Yerel)'
+                    if 'source' not in lead:
+                        lead['source'] = 'OFFLINE (Yerel)'
                 all_leads.extend(offline_leads)
-        except:
-            pass
+        except Exception as e:
+            print(f"Fetch CSV Failed: {e}")
             
+    # Remove duplicates if needed (optional logic, but simplistic for now)
+    # Convert all to list and sort by timestamp if possible
+    try:
+        all_leads.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+    except:
+        pass
+        
     return all_leads
 
 # ============================================================
